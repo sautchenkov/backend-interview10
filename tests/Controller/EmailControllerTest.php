@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Test\Controller;
+namespace App\Tests\Controller;
 
 use App\Entity\Email;
 use App\Entity\EmailVerification;
 use App\Messenger\Message\EmailMessage;
 use App\Repository\EmailRepository;
 use App\Service\EmailVerificationClient;
-use App\Service\EmailVerificationService;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 class EmailControllerTest extends WebTestCase
@@ -60,8 +60,9 @@ class EmailControllerTest extends WebTestCase
 
         $this->emailVerificationClientMock->expects($this->never())->method('verify');
         $this->messageBusMock->expects($this->once())->method('dispatch')
-            ->will($this->returnCallback(function ($emailMessage) {
+            ->will($this->returnCallback(function ($emailMessage) : Envelope {
                 $this->assertEquals(EmailMessage::class, get_class($emailMessage));
+                return new Envelope($emailMessage);
             }));
 
         $this->client->jsonRequest('POST', sprintf('%s', $this->path), ['email' => self::VALID_EMAIL]);
@@ -86,9 +87,10 @@ class EmailControllerTest extends WebTestCase
 
         $this->emailVerificationClientMock->expects($this->never())->method('verify');
         $this->messageBusMock->expects($this->once())->method('dispatch')
-            ->will($this->returnCallback(function ($emailMessage) use ($fixture) {
+            ->will($this->returnCallback(function ($emailMessage) use ($fixture) : Envelope {
                 $this->assertEquals(EmailMessage::class, get_class($emailMessage));
                 $this->assertEquals($fixture->getId(), $emailMessage->id);
+                return new Envelope($emailMessage);
             }));
 
         $this->client->jsonRequest('POST', sprintf('%s', $this->path), ['email' => self::VALID_EMAIL]);
