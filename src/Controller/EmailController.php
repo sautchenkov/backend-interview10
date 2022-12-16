@@ -3,14 +3,17 @@
 namespace App\Controller;
 
 use App\Entity\Email;
+use App\Messenger\Message\EmailMessage;
 use App\Repository\EmailRepository;
 use App\Service\EmailVerificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -21,8 +24,8 @@ class EmailController extends AbstractController
     public function new(
         Request $request,
         EmailRepository $emailRepository,
-        EmailVerificationService $emailVerificationService,
         ValidatorInterface $validator,
+        MessageBusInterface $messageBus,
     ): JsonResponse {
         $email = $request->request->get('email') or throw new BadRequestHttpException("Missing email");
 
@@ -36,22 +39,25 @@ class EmailController extends AbstractController
                 throw new UnprocessableEntityHttpException("Invalid email address provided");
             }
 
-            $emailRepository->add($entity);
+            $emailRepository->add($entity, true);
         }
 
-        // TODO: Move verification to queue
-        $emailVerificationService->verify($entity);
+        $messageBus->dispatch(new EmailMessage($entity->getId()));
 
         return $this->json(['success' => true, 'id' => $entity->getId()]);
     }
 
     #[Route('/{email}', name: 'app_email_show', methods: ['GET'])]
-    public function show(string $email, EmailRepository $emailRepository): JsonResponse
+    public function show(string $email,
+                         EmailRepository $emailRepository,
+                         EmailVerificationService $emailVerificationService): JsonResponse
     {
         $email = $emailRepository->findOneBy(['email' => $email]) or
-            throw new NotFoundHttpException('Email not found');
+        throw new NotFoundHttpException('Email not found');
 
-        // TODO: Return 204 code if verification is not yet completed
+        if ( ! $emailVerificationService->isHasVerificationResult($email)) {
+            return $this->json($email, 204);
+        }
 
         return $this->json($email);
     }

@@ -46,4 +46,9 @@ class EmailVerificationService
 
         }
     }
+
+    public function isHasVerificationResult(Email $email) : bool
+    {
+        return $this->repository->count(['email' => $email]);
+    }
 }

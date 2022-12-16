@@ -5,6 +5,7 @@ namespace App\Tests\Controller;
 use App\Entity\Email;
 use App\Entity\EmailVerification;
 use App\Messenger\Message\EmailMessage;
+use App\Messenger\MessageHandler\EmailMassageHandler;
 use App\Repository\EmailRepository;
 use App\Service\EmailVerificationClient;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -21,6 +22,7 @@ class EmailControllerTest extends WebTestCase
     private EmailRepository $repository;
     private string $path = '/email-verification/';
     private MockObject|EmailVerificationClient $emailVerificationClientMock;
+    private MockObject|EmailMassageHandler $emailMessageHandlerMock;
     private MockObject|MessageBusInterface $messageBusMock;
 
     protected function setUp(): void
@@ -175,5 +177,11 @@ class EmailControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
         self::assertSame($originalNumObjectsInRepository, count($this->repository->findAll()));
+    }
+
+    public function testEmailMassagerHandler() : void
+    {
+        $this->emailMessageHandlerMock = $this->getMockBuilder(EmailMassageHandler::class)->getMock();
+        //TODO: complete test
     }
 }
